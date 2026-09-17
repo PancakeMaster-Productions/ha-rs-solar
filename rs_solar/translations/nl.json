@@ -1,0 +1,47 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "RS Solar",
+        "description": "Voer de gegevens van uw RS Solar-apparaat in.",
+        "data": {
+          "host": "Host",
+          "port": "Poort",
+          "poll_interval": "Poll-interval (seconden)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbinden met het apparaat is mislukt."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opties voor RS Solar",
+        "data": {
+          "poll_interval": "Poll-interval (seconden)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "firmware_version": {
+        "name": "Firmware-versie"
+      },
+      "active_power_source_w": {
+        "name": "Actieve voedingsbron"
+      },
+      "active_power_user_w": {
+        "name": "Actieve voeding"
+      },
+      "power_source_status": {
+        "name": "Status voedingsbron"
+      },
+      "power_user_status": {
+        "name": "Status voeding"
+      }
+    }
+  }
+}

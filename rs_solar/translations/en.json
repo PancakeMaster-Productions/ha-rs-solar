@@ -1,0 +1,47 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "RS Solar",
+        "description": "Enter the details of your RS Solar device.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "poll_interval": "Poll interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the device."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "RS Solar options",
+        "data": {
+          "poll_interval": "Poll interval (seconds)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "firmware_version": {
+        "name": "Firmware Version"
+      },
+      "active_power_source_w": {
+        "name": "Active Power Source"
+      },
+      "active_power_user_w": {
+        "name": "Active Power User"
+      },
+      "power_source_status": {
+        "name": "Power Source Status"
+      },
+      "power_user_status": {
+        "name": "Power User Status"
+      }
+    }
+  }
+}
