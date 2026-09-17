@@ -1,10 +1,13 @@
 {
   "domain": "rs_solar",
   "name": "RS Solar",
-  "codeowners": [],
+  "codeowners": [
+    "PancakeMaster-Productions"
+  ],
   "config_flow": true,
-  "documentation": "https://www.home-assistant.io/integrations/rs_solar",
+  "documentation": "https://github.com/PancakeMaster-Productions/ha-rs-solar",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/home-assistant/core/issues",
-  "version": "1.0.0"
+  "issue_tracker": "https://github.com/PancakeMaster-Productions/ha-rs-solar/issues",
+  "version": "1.0.0",
+  "homeassistant": "2024.1.0"
 }
