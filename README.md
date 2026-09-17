@@ -1,64 +1,64 @@
 # RS Solar
 
-Home Assistant custom integration voor **RS Solar** energie-apparatuur.
-Deze integratie leest data uit de lokale RS Solar API (Arduino-gebaseerd)
-en toont onder andere:
+Home Assistant custom integration for **RS Solar** energy equipment.
+This integration reads data from the local RS Solar API
+and displays, among other things:
 
-- Firmware-versie
-- Actieve voedingsbron (W)
-- Actieve voeding gebruiker (W)
-- Status voedingsbron
-- Status voeding
+- Firmware version
+- Active power source (W)
+- Active user power (W)
+- Power source status
+- User power status
 
-## Vereisten
+## Requirements
 
-- Home Assistant **2024.1.0** of nieuwer
-- Een RS Solar apparaat met actieve lokale API (`/api/v1/data`)
+- Home Assistant **2024.1.0** or newer
+- An RS Solar device with an active local API (`/api/v1/data`)
 
-## Installatie via HACS
+## Installation via HACS
 
-1. Ga naar **HACS** in Home Assistant.
-2. Klik op **Meer** (≡) → **Aanvragen**.
-3. Plak de repository-URL: `https://github.com/PancakeMaster-Productions/ha-rs-solar`
-4. Selecteer **RS Solar** en klik op **Installeer**.
-5. Start Home Assistant opnieuw op.
-6. Ga naar **Instellingen › Apparaten & services** → **Nieuwe integratie toevoegen** → zoek **RS Solar**.
-7. Voer de host, poort en poll-interval van uw apparaat in.
+1. Go to **HACS** in Home Assistant.
+2. Click **More** (≡) → **Add**.
+3. Paste the repository URL: `https://github.com/PancakeMaster-Productions/ha-rs-solar`
+4. Select **RS Solar** and click **Install**.
+5. Restart Home Assistant.
+6. Go to **Settings › Devices & Services** → **Add Integration** → search for **RS Solar**.
+7. Enter the host, port and poll interval of your device.
 
-## Handmatige installatie
+## Manual installation
 
-1. Clone deze repository of download de release.
-2. Kopieer de map `custom_components/rs_solar` naar uw HA-configuratiemap:
+1. Clone this repository or download the release.
+2. Copy the `custom_components/rs_solar` folder to your HA configuration directory:
    ```
    /config/custom_components/rs_solar
    ```
-3. Start Home Assistant opnieuw op.
-4. Voeg de integratie toe via **Instellingen › Apparaten & services**.
+3. Restart Home Assistant.
+4. Add the integration via **Settings › Devices & Services**.
 
-## Configuratie
+## Configuration
 
-| Veld | Omschrijving | Standaard |
+| Field | Description | Default |
 |---|---|---|
-| Host | IP-adres of hostname van het RS Solar apparaat | – |
-| Poort | TCP-poort van de lokale API | `80` |
-| Poll-interval | Interval in seconden waarmee de API wordt bevraagd (5–3600) | `30` |
+| Host | IP address or hostname of the RS Solar device | – |
+| Port | TCP port of the local API | `80` |
+| Poll interval | Interval in seconds at which the API is polled (5–3600) | `30` |
 
-## Ontwikkelen
+## Development
 
 ```bash
 git clone https://github.com/PancakeMaster-Productions/ha-rs-solar
 cd ha-rs-solar
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt  # als u lokale dev-tooling wilt
+pip install -r requirements.txt  # if you want local dev tooling
 ```
 
-De code gebruikt `aiohttp`, `voluptuous` en de standaard Home Assistant helpers.
+The code uses `aiohttp`, `voluptuous` and the standard Home Assistant helpers.
 
-## Licentie
+## License
 
 [MIT](LICENSE)
 
 ## Credits
 
-- Ontwikkeld door [PancakeMaster-Productions](https://github.com/PancakeMaster-Productions)
+- Developed by [PancakeMaster-Productions](https://github.com/PancakeMaster-Productions)
