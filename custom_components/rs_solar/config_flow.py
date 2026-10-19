@@ -22,7 +22,6 @@ from .const import (
     DOMAIN,
 )
 
-
 async def _test_connection(hass: HomeAssistant, host: str, port: int) -> str | None:
     """Test the connection and return firmware version or None on failure."""
     url = f"http://{host}:{port}/api/v1/data"
@@ -38,7 +37,7 @@ async def _test_connection(hass: HomeAssistant, host: str, port: int) -> str | N
         return None
 
 
-class ArduinoLocalApiConfigFlow(ConfigFlow, domain=DOMAIN):
+class RSLocalApiConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for RS Solar."""
 
     VERSION = 1
