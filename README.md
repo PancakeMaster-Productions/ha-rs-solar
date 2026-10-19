@@ -9,11 +9,19 @@ and displays, among other things:
 - Active user power (W)
 - Power source status
 - User power status
+- State
+
+It also exposes a **Charge Block** switch to control the RS Solar state endpoint:
+
+- `state = 0` → Normal
+- `state = 1` → Charge Block
 
 ## Requirements
 
 - Home Assistant **2024.1.0** or newer
-- An RS Solar device with an active local API (`/api/v1/data`)
+- An RS Solar device with an active local API:
+  - `/api/v1/data`
+  - `/api/v1/state`
 
 ## Installation via HACS
 
@@ -35,13 +43,25 @@ and displays, among other things:
 3. Restart Home Assistant.
 4. Add the integration via **Settings › Devices & Services**.
 
+## Entities
+
+| Entity              | Type   | Description                                             |
+|---------------------|--------|---------------------------------------------------------|
+| State               | Sensor | Shows the current RS Solar state: Normal / Charge Block |
+| Charge Block        | Switch | Controls the RS Solar state endpoint                    |
+| Firmware Version    | Sensor | Shows the firmware version                              |
+| Active Power Source | Sensor | Shows active power source in watts                      |
+| Active Power User   | Sensor | Shows active user power in watts                        |
+| Power Source Status | Sensor | Shows the power source status                           |
+| Power User Status   | Sensor | Shows the user power status                             |
+
 ## Configuration
 
-| Field | Description | Default |
-|---|---|---|
-| Host | IP address or hostname of the RS Solar device | – |
-| Port | TCP port of the local API | `80` |
-| Poll interval | Interval in seconds at which the API is polled (5–3600) | `30` |
+| Field         | Description                                             | Default |
+|---------------|---------------------------------------------------------|---------|
+| Host          | IP address or hostname of the RS Solar device           | –       |
+| Port          | TCP port of the local API                               | `80`    |
+| Poll interval | Interval in seconds at which the API is polled (5–3600) | `30`    |
 
 ## Development
 
@@ -62,3 +82,4 @@ The code uses `aiohttp`, `voluptuous` and the standard Home Assistant helpers.
 ## Credits
 
 - Developed by [PancakeMaster-Productions](https://github.com/PancakeMaster-Productions)
+

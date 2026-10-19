@@ -21,7 +21,7 @@ from .const import DOMAIN, CONF_HOST, CONF_PORT, CONF_POLL_INTERVAL
 _LOGGER = logging.getLogger(__name__)
 
 
-class ArduinoLocalApiCoordinator(DataUpdateCoordinator[dict]):
+class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
     """Coordinator that polls the RS Solar."""
 
     config_entry: ConfigEntry
@@ -39,14 +39,16 @@ class ArduinoLocalApiCoordinator(DataUpdateCoordinator[dict]):
             update_method=self._async_update_data,
             update_interval=timedelta(seconds=poll_interval),
         )
-        self._url = f"http://{host}:{port}/api/v1/data"
+        self._base_url = f"http://{host}:{port}"
+        self._data_url = f"{self._base_url}/api/v1/data"
+        self._state_url = f"{self._base_url}/api/v1/state"
 
     async def _async_update_data(self) -> dict:
         """Fetch data from the API."""
         session = async_get_clientsession(self.hass)
         try:
             async with session.get(
-                self._url, timeout=aiohttp.ClientTimeout(total=10)
+                self._data_url, timeout=aiohttp.ClientTimeout(total=10)
             ) as resp:
                 if resp.status != 200:
                     raise UpdateFailed(
@@ -61,3 +63,21 @@ class ArduinoLocalApiCoordinator(DataUpdateCoordinator[dict]):
             raise UpdateFailed("No data in response")
 
         return payload
+
+    async def async_set_state(self, state: int) -> None:
+        """Set the RS Solar state via the API."""
+        if state not in (0, 1):
+            raise ValueError("State must be 0 (normal) or 1 (charge block)")
+
+        session = async_get_clientsession(self.hass)
+        try:
+            async with session.post(
+                self._state_url,
+                json={"state": state},
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as resp:
+                if resp.status != 200:
+                    raise UpdateFailed(f"Unexpected status code {resp.status}")
+                await resp.json()
+        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+            raise UpdateFailed(f"Error setting state: {err}") from err

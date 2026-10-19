@@ -41,6 +41,14 @@
       },
       "power_user_status": {
         "name": "Power User Status"
+      },
+      "state": {
+        "name": "State"
+      }
+    },
+    "switch": {
+      "charge_block": {
+        "name": "Charge Block"
       }
     }
   }

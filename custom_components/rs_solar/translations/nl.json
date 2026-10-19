@@ -41,6 +41,14 @@
       },
       "power_user_status": {
         "name": "Status voeding"
+      },
+      "state": {
+        "name": "Status"
+      }
+    },
+    "switch": {
+      "charge_block": {
+        "name": "Laadblokkering"
       }
     }
   }
