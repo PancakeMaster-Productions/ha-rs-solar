@@ -55,8 +55,10 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
                         f"Unexpected status code {resp.status}"
                     )
                 data = await resp.json()
-        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+        except (aiohttp.ClientError, asyncio.TimeoutError, aiohttp.ContentTypeError) as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
+        except Exception as err:
+            raise UpdateFailed(f"Unexpected error while fetching data: {err!r}") from err
 
         payload = data.get("data")
         if not payload:
@@ -79,5 +81,7 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
                 if resp.status != 200:
                     raise UpdateFailed(f"Unexpected status code {resp.status}")
                 await resp.json()
-        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+        except (aiohttp.ClientError, asyncio.TimeoutError, aiohttp.ContentTypeError) as err:
             raise UpdateFailed(f"Error setting state: {err}") from err
+        except Exception as err:
+            raise UpdateFailed(f"Unexpected error while setting state: {err!r}") from err

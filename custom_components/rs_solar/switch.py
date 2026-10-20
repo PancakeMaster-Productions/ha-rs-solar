@@ -23,7 +23,7 @@ async def async_setup_entry(
     """Set up switch entities from a config entry."""
     coordinator: RSLocalApiCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
-        RSChargeBlockSwitch(coordinator, entry, CHARGE_BLOCK_SWITCH_DESCRIPTION)
+        [RSChargeBlockSwitch(coordinator, entry, CHARGE_BLOCK_SWITCH_DESCRIPTION)]
     )
 
 
