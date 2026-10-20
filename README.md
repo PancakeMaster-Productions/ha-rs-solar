@@ -1,6 +1,6 @@
 # RS Solar
 
-Home Assistant custom integration for **RS Solar** energy equipment.
+Home Assistant custom integration for **RS Solar Energy** devices.
 This integration reads data from the local RS Solar API
 and displays, among other things:
 
@@ -11,10 +11,16 @@ and displays, among other things:
 - User power status
 - State
 
-It also exposes a **Charge Block** switch to control the RS Solar state endpoint:
+It also exposes controls to interact with the RS Solar state and setpoints:
 
-- `state = 0` → Normal
-- `state = 1` → Charge Block
+- A **Charge Block** switch to control the RS Solar state endpoint:
+  - `state = 0` → Normal
+  - `state = 1` → Charge Block
+- A **Charge Load** switch to control the RS Solar state endpoint:
+  - `state = 2` → Force Load
+- Two number entities to change the power setpoints:
+  - **Charge Block Power** via `/api/v1/charge-block`
+  - **Force Load Power** via `/api/v1/charge-load`
 
 ## Requirements
 
@@ -22,6 +28,8 @@ It also exposes a **Charge Block** switch to control the RS Solar state endpoint
 - An RS Solar device with an active local API:
   - `/api/v1/data`
   - `/api/v1/state`
+  - `/api/v1/charge-block`
+  - `/api/v1/charge-load`
 
 ## Installation via HACS
 
@@ -45,15 +53,18 @@ It also exposes a **Charge Block** switch to control the RS Solar state endpoint
 
 ## Entities
 
-| Entity              | Type   | Description                                             |
-|---------------------|--------|---------------------------------------------------------|
-| State               | Sensor | Shows the current RS Solar state: Normal / Charge Block |
-| Charge Block        | Switch | Controls the RS Solar state endpoint                    |
-| Firmware Version    | Sensor | Shows the firmware version                              |
-| Active Power Source | Sensor | Shows active power source in watts                      |
-| Active Power User   | Sensor | Shows active user power in watts                        |
-| Power Source Status | Sensor | Shows the power source status                           |
-| Power User Status   | Sensor | Shows the user power status                             |
+| Entity              | Type   | Description                                                          |
+|---------------------|--------|----------------------------------------------------------------------|
+| State               | Sensor | Shows the current RS Solar state: Normal / Charge Block / Force Load |
+| Charge Block        | Switch | Controls the RS Solar state endpoint (charge block bit)              |
+| Charge Load         | Switch | Controls the RS Solar state endpoint (force load bit)                |
+| Charge Block Power  | Number | Sets the charge block power via `/api/v1/charge-block`               |
+| Force Load Power    | Number | Sets the force load power via `/api/v1/charge-load`                  |
+| Firmware Version    | Sensor | Shows the firmware version                                           |
+| Active Power Source | Sensor | Shows active power source in watts                                   |
+| Active Power User   | Sensor | Shows active user power in watts                                     |
+| Power Source Status | Sensor | Shows the power source status                                        |
+| Power User Status   | Sensor | Shows the user power status                                          |
 
 ## Configuration
 
@@ -82,4 +93,3 @@ The code uses `aiohttp`, `voluptuous` and the standard Home Assistant helpers.
 ## Credits
 
 - Developed by [PancakeMaster-Productions](https://github.com/PancakeMaster-Productions)
-
