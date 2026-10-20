@@ -118,7 +118,7 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
         try:
             async with session.post(
                 self._state_url,
-                json={"state": state},
+                json={"value": state},
                 timeout=aiohttp.ClientTimeout(total=10),
             ) as resp:
                 if not 200 <= resp.status < 300:
