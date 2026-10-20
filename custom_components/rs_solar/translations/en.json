@@ -50,6 +50,14 @@
       "charge_block": {
         "name": "Charge Block"
       }
+    },
+    "number": {
+      "charge_block_power": {
+        "name": "Charge Block Power"
+      },
+      "charge_load_power": {
+        "name": "Force Load Power"
+      }
     }
   }
 }

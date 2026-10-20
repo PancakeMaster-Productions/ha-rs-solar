@@ -63,6 +63,9 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
         self._base_url = f"http://{host}:{port}"
         self._data_url = f"{self._base_url}/api/v1/data"
         self._state_url = f"{self._base_url}/api/v1/state"
+        self._charge_block_url = f"{self._base_url}/api/v1/charge-block"
+        self._charge_load_url = f"{self._base_url}/api/v1/charge-load"
+
 
     async def _async_update_data(self) -> dict:
         """Fetch data from the RS Solar API."""
@@ -110,15 +113,15 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
 
     async def async_set_state(self, state: int) -> None:
         """Set the RS Solar state via the API."""
-        if state not in (0, 1):
-            raise ValueError("State must be 0 (normal) or 1 (charge block)")
+        if not isinstance(state, int) or state < 0:
+            raise ValueError("State must be a non-negative integer bitmask")
 
         session = async_get_clientsession(self.hass)
 
         try:
             async with session.post(
                 self._state_url,
-                json={"state": state},
+                json={"value": state},
                 timeout=aiohttp.ClientTimeout(total=10),
             ) as resp:
                 if not 200 <= resp.status < 300:
@@ -140,3 +143,55 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
             ) from err
 
         _LOGGER.debug("RS Solar: state changed to %s", state)
+
+    async def _async_set_value(self, url: str, value: int, action: str) -> None:
+        """Set a numeric value via an RS Solar API endpoint."""
+        session = async_get_clientsession(self.hass)
+
+        try:
+            async with session.post(
+                url,
+                json={"value": value},
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as resp:
+                if not 200 <= resp.status < 300:
+                    raise UpdateFailed(
+                        f"Unexpected HTTP status setting {action}: {resp.status}"
+                    )
+
+                try:
+                    response_json = await resp.json()
+                    if isinstance(response_json, dict):
+                        _LOGGER.debug(
+                            "RS Solar: %s feedback: %s",
+                            action,
+                            response_json.get("data"),
+                        )
+                except Exception:
+                    pass
+
+        except UpdateFailed:
+            raise
+
+        except (
+            aiohttp.ClientError,
+            asyncio.TimeoutError,
+        ) as err:
+            raise UpdateFailed(
+                f"Error setting RS Solar {action}: {err}"
+            ) from err
+
+        _LOGGER.debug("RS Solar: %s set to %s", action, value)
+
+    async def async_set_charge_block_power(self, power: int) -> None:
+        """Set the charge block power via the API."""
+        await self._async_set_value(
+            self._charge_block_url, power, "charge block power"
+        )
+
+    async def async_set_charge_load_power(self, power: int) -> None:
+        """Set the charge load power via the API."""
+        await self._async_set_value(
+            self._charge_load_url, power, "charge load power"
+        )
+

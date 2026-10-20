@@ -23,6 +23,8 @@ from .coordinator import RSLocalApiCoordinator
 STATE_OPTIONS = {
     0: "Normal",
     1: "Charge Block",
+    2: "Force Load",
+    3: "Charge Block + Force Load",
 }
 
 
@@ -103,9 +105,8 @@ class RSSolarSensor(CoordinatorEntity[RSLocalApiCoordinator], SensorEntity):
     def native_value(self) -> str | int | float | None:
         """Return the current sensor value."""
         value = self.coordinator.data.get(self.entity_description.key)
-
         if self.entity_description.key == "state":
-            if value in STATE_OPTIONS:
-                return STATE_OPTIONS[value]
+            if isinstance(value, int):
+                return STATE_OPTIONS.get(value)
 
         return value
