@@ -50,6 +50,14 @@
       "charge_block": {
         "name": "Laadblokkering"
       }
+    },
+    "number": {
+      "charge_block_power": {
+        "name": "Laadblokkering vermogen"
+      },
+      "charge_load_power": {
+        "name": "Force load vermogen"
+      }
     }
   }
 }

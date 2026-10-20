@@ -48,20 +48,6 @@ SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfPower.WATT,
     ),
     SensorEntityDescription(
-        key="block_power",
-        name="Block power setpoint",
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-        native_unit_of_measurement=UnitOfPower.WATT,
-    ),
-    SensorEntityDescription(
-        key="load_power",
-        name="Force Load setpoint",
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-        native_unit_of_measurement=UnitOfPower.WATT,
-    ),
-    SensorEntityDescription(
         key="power_source_status",
         name="Power Source Status",
     ),
@@ -123,6 +109,4 @@ class RSSolarSensor(CoordinatorEntity[RSLocalApiCoordinator], SensorEntity):
             if isinstance(value, int):
                 return STATE_OPTIONS.get(value)
 
-        return value
-        return value
         return value
