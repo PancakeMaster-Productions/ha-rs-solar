@@ -110,8 +110,8 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
 
     async def async_set_state(self, state: int) -> None:
         """Set the RS Solar state via the API."""
-        if state not in (0, 1):
-            raise ValueError("State must be 0 (normal) or 1 (charge block)")
+        if not isinstance(state, int) or state < 0:
+            raise ValueError("State must be a non-negative integer bitmask")
 
         session = async_get_clientsession(self.hass)
 

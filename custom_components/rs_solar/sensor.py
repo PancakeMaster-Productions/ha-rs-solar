@@ -23,6 +23,7 @@ from .coordinator import RSLocalApiCoordinator
 STATE_OPTIONS = {
     0: "Normal",
     1: "Charge Block",
+    2: "Force Load"
 }
 
 
