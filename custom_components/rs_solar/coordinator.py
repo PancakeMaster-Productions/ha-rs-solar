@@ -76,23 +76,33 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
             f"{self._base_url}/api/v1/charge-load"
         )
 
-        # Persist the desired state independently of the API state.
+        # Persistent desired switch state.
         self._desired_state_store = Store(
             hass,
             1,
             f"{DOMAIN}_{entry.entry_id}_desired_state",
         )
-
         self._desired_state: int | None = None
 
-        # Serializes switch changes and automatic restoration.
-        self._state_write_lock = asyncio.Lock()
+        # Persistent desired power values.
+        self._desired_power_store = Store(
+            hass,
+            1,
+            f"{DOMAIN}_{entry.entry_id}_desired_power",
+        )
+        self._desired_block_power: int | None = None
+        self._desired_load_power: int | None = None
 
-        # None means no write has been attempted yet.
+        # Serialize switch writes and switch restoration.
+        self._state_write_lock = asyncio.Lock()
         self._last_state_write: float | None = None
 
+        # Power restoration has its own cooldown.
+        self._last_block_power_write: float | None = None
+        self._last_load_power_write: float | None = None
+
     async def async_load_desired_state(self) -> None:
-        """Load the desired state saved by Home Assistant."""
+        """Load the saved desired switch state."""
         stored = await self._desired_state_store.async_load()
 
         if not isinstance(stored, dict):
@@ -106,19 +116,48 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
             and state >= 0
         ):
             self._desired_state = state
-
             _LOGGER.debug(
                 "RS Solar: loaded desired state %s",
                 state,
             )
 
+    async def async_load_desired_power(self) -> None:
+        """Load saved desired power values."""
+        stored = await self._desired_power_store.async_load()
+
+        if not isinstance(stored, dict):
+            return
+
+        block_power = stored.get("block_power")
+        load_power = stored.get("load_power")
+
+        if (
+            isinstance(block_power, int)
+            and not isinstance(block_power, bool)
+            and -9000 <= block_power <= 0
+        ):
+            self._desired_block_power = block_power
+
+        if (
+            isinstance(load_power, int)
+            and not isinstance(load_power, bool)
+            and 0 <= load_power <= 9000
+        ):
+            self._desired_load_power = load_power
+
+        _LOGGER.debug(
+            "RS Solar: loaded desired power values: block=%s, load=%s",
+            self._desired_block_power,
+            self._desired_load_power,
+        )
+
     @property
     def desired_state(self) -> int | None:
-        """Return the desired state."""
+        """Return the desired switch state."""
         return self._desired_state
 
     async def _async_update_data(self) -> dict:
-        """Fetch data and reconcile the reported state."""
+        """Fetch API data and restore desired settings if needed."""
         session = async_get_clientsession(self.hass)
 
         _LOGGER.debug(
@@ -168,8 +207,9 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
             payload,
         )
 
-        # Do not let a failed restore prevent normal sensor updates.
+        # Restoration failures must not prevent sensor updates.
         await self._async_sync_desired_state(payload)
+        await self._async_sync_desired_power(payload)
 
         return payload
 
@@ -177,7 +217,7 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
         self,
         payload: dict,
     ) -> None:
-        """Initialize or restore the desired device state."""
+        """Initialize or restore the desired switch state."""
         reported_state = payload.get("state")
 
         if (
@@ -188,8 +228,7 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
             return
 
         async with self._state_write_lock:
-            # On first installation, adopt the current device state.
-            # An existing saved state must never be overwritten here.
+            # First installation: adopt the current device state.
             if self._desired_state is None:
                 await self._desired_state_store.async_save(
                     {"state": reported_state}
@@ -204,7 +243,6 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
 
             desired_state = self._desired_state
 
-            # Nothing to do when the device already matches.
             if reported_state == desired_state:
                 return
 
@@ -216,8 +254,6 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
             ):
                 return
 
-            # Record the attempt before sending. If the device rejects
-            # the command, do not retry on every polling cycle.
             self._last_state_write = now
 
             _LOGGER.warning(
@@ -241,6 +277,123 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
                     "RS Solar: restore command sent for state %s",
                     desired_state,
                 )
+
+    async def _async_sync_desired_power(
+        self,
+        payload: dict,
+    ) -> None:
+        """Initialize or restore the desired power values."""
+        power_settings = (
+            (
+                "block_power",
+                "_desired_block_power",
+                self._charge_block_url,
+                "charge block power",
+            ),
+            (
+                "load_power",
+                "_desired_load_power",
+                self._charge_load_url,
+                "charge load power",
+            ),
+        )
+
+        for (
+            key,
+            desired_attribute,
+            url,
+            action,
+        ) in power_settings:
+            desired = getattr(self, desired_attribute)
+            reported = payload.get(key)
+
+            # Adopt API values on first installation only.
+            if desired is None:
+                if not isinstance(reported, (int, float)):
+                    continue
+
+                if isinstance(reported, bool):
+                    continue
+
+                if not float(reported).is_integer():
+                    continue
+
+                reported_int = int(reported)
+
+                if key == "block_power":
+                    if not -9000 <= reported_int <= 0:
+                        continue
+                elif not 0 <= reported_int <= 9000:
+                    continue
+
+                setattr(self, desired_attribute, reported_int)
+                await self._async_save_desired_power()
+
+                _LOGGER.debug(
+                    "RS Solar: initialized desired %s to %s",
+                    key,
+                    reported_int,
+                )
+                continue
+
+            if (
+                not isinstance(reported, (int, float))
+                or isinstance(reported, bool)
+            ):
+                continue
+
+            if reported == desired:
+                continue
+
+            now = asyncio.get_running_loop().time()
+
+            last_write_attribute = (
+                "_last_block_power_write"
+                if key == "block_power"
+                else "_last_load_power_write"
+            )
+            last_write = getattr(self, last_write_attribute)
+
+            if (
+                last_write is not None
+                and now - last_write < RESTORE_COOLDOWN
+            ):
+                continue
+
+            setattr(self, last_write_attribute, now)
+
+            _LOGGER.warning(
+                "RS Solar: reported %s is %s, desired value is %s. "
+                "Attempting restoration.",
+                key,
+                reported,
+                desired,
+            )
+
+            try:
+                await self._async_set_value(url, desired, action)
+            except UpdateFailed:
+                _LOGGER.warning(
+                    "RS Solar: failed to restore %s; "
+                    "will retry after cooldown",
+                    action,
+                    exc_info=True,
+                )
+            else:
+                _LOGGER.info(
+                    "RS Solar: restore command sent for %s: %s",
+                    action,
+                    desired,
+                )
+
+    async def _async_save_desired_power(self) -> None:
+        """Persist the desired power values."""
+        await self._desired_power_store.async_save(
+            {
+                "block_power": self._desired_block_power,
+                "load_power": self._desired_load_power,
+            }
+        )
 
     async def async_set_switch_bit(
         self,
@@ -271,13 +424,11 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
             else:
                 new_state = current & ~mask
 
-            # Save the user's intention before attempting the API write.
+            # Persist intention before attempting the API write.
             await self._desired_state_store.async_save(
                 {"state": new_state}
             )
             self._desired_state = new_state
-
-            # A manual command also counts as a write attempt.
             self._last_state_write = (
                 asyncio.get_running_loop().time()
             )
@@ -292,9 +443,9 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
     async def async_set_state(self, state: int) -> None:
         """Set the RS Solar state via the API."""
         if (
-                not isinstance(state, int)
-                or isinstance(state, bool)
-                or state < 0
+            not isinstance(state, int)
+            or isinstance(state, bool)
+            or state < 0
         ):
             raise ValueError(
                 "State must be a non-negative integer bitmask"
@@ -305,17 +456,18 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
         for attempt in range(2):
             try:
                 async with session.post(
-                        self._state_url,
-                        json={"value": state},
-                        headers={"Connection": "close"},
-                        timeout=aiohttp.ClientTimeout(total=10),
+                    self._state_url,
+                    json={"value": state},
+                    headers={"Connection": "close"},
+                    timeout=aiohttp.ClientTimeout(total=10),
                 ) as resp:
                     response_text = await resp.text()
 
                     if not 200 <= resp.status < 300:
                         raise UpdateFailed(
                             "Unexpected HTTP status setting state: "
-                            f"{resp.status}; response={response_text[:200]!r}"
+                            f"{resp.status}; "
+                            f"response={response_text[:200]!r}"
                         )
 
                     _LOGGER.info(
@@ -329,10 +481,11 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
                 if attempt == 0:
                     _LOGGER.warning(
                         "RS Solar disconnected during state write; "
-                        "retrying once after 1 second"
+                        "retrying once after 1 second",
                     )
                     await asyncio.sleep(1)
                     continue
+
                 raise UpdateFailed(
                     "RS Solar disconnected during both state-write attempts"
                 ) from None
@@ -340,7 +493,10 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
             except UpdateFailed:
                 raise
 
-            except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+            except (
+                aiohttp.ClientError,
+                asyncio.TimeoutError,
+            ) as err:
                 raise UpdateFailed(
                     f"Error setting RS Solar state to {state}: "
                     f"{type(err).__name__}: {err}"
@@ -355,53 +511,77 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
         """Set a numeric value via an RS Solar API endpoint."""
         session = async_get_clientsession(self.hass)
 
-        try:
-            async with session.post(
-                url,
-                json={"value": value},
-                timeout=aiohttp.ClientTimeout(total=10),
-            ) as resp:
-                if not 200 <= resp.status < 300:
-                    raise UpdateFailed(
-                        f"Unexpected HTTP status setting {action}: "
-                        f"{resp.status}"
-                    )
+        for attempt in range(2):
+            try:
+                async with session.post(
+                    url,
+                    json={"value": value},
+                    headers={"Connection": "close"},
+                    timeout=aiohttp.ClientTimeout(total=10),
+                ) as resp:
+                    response_text = await resp.text()
 
-                try:
-                    response_json = await resp.json()
-
-                    if isinstance(response_json, dict):
-                        _LOGGER.debug(
-                            "RS Solar: %s feedback: %s",
-                            action,
-                            response_json.get("data"),
+                    if not 200 <= resp.status < 300:
+                        raise UpdateFailed(
+                            f"Unexpected HTTP status setting {action}: "
+                            f"{resp.status}; "
+                            f"response={response_text[:200]!r}"
                         )
-                except Exception:
-                    # Some endpoints may return an empty response.
-                    pass
 
-        except UpdateFailed:
-            raise
+                    _LOGGER.info(
+                        "RS Solar: %s set to %s (HTTP %s)",
+                        action,
+                        value,
+                        resp.status,
+                    )
+                    return
 
-        except (
-            aiohttp.ClientError,
-            asyncio.TimeoutError,
-        ) as err:
-            raise UpdateFailed(
-                f"Error setting RS Solar {action}: {err}"
-            ) from err
+            except aiohttp.ServerDisconnectedError:
+                if attempt == 0:
+                    _LOGGER.warning(
+                        "RS Solar disconnected while setting %s; "
+                        "retrying once after 1 second",
+                        action,
+                    )
+                    await asyncio.sleep(1)
+                    continue
 
-        _LOGGER.debug(
-            "RS Solar: %s set to %s",
-            action,
-            value,
-        )
+                raise UpdateFailed(
+                    f"RS Solar disconnected during both attempts "
+                    f"to set {action}"
+                ) from None
+
+            except UpdateFailed:
+                raise
+
+            except (
+                aiohttp.ClientError,
+                asyncio.TimeoutError,
+            ) as err:
+                raise UpdateFailed(
+                    f"Error setting RS Solar {action}: "
+                    f"{type(err).__name__}: {err}"
+                ) from err
 
     async def async_set_charge_block_power(
         self,
         power: int,
     ) -> None:
-        """Set the charge block power via the API."""
+        """Set and persist charge block power."""
+        if not -9000 <= power <= 0:
+            raise ValueError(
+                "Charge block power must be between -9000 and 0"
+            )
+
+        # Save the requested value before the API write. If the
+        # connection drops after the device receives it, the desired
+        # value remains available for reconciliation.
+        self._desired_block_power = power
+        await self._async_save_desired_power()
+
+        self._last_block_power_write = (
+            asyncio.get_running_loop().time()
+        )
         await self._async_set_value(
             self._charge_block_url,
             power,
@@ -412,7 +592,18 @@ class RSLocalApiCoordinator(DataUpdateCoordinator[dict]):
         self,
         power: int,
     ) -> None:
-        """Set the charge load power via the API."""
+        """Set and persist charge load power."""
+        if not 0 <= power <= 9000:
+            raise ValueError(
+                "Charge load power must be between 0 and 9000"
+            )
+
+        self._desired_load_power = power
+        await self._async_save_desired_power()
+
+        self._last_load_power_write = (
+            asyncio.get_running_loop().time()
+        )
         await self._async_set_value(
             self._charge_load_url,
             power,
