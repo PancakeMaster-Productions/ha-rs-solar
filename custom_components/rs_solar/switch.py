@@ -1,3 +1,4 @@
+
 """Switch platform for RS Solar API."""
 
 from __future__ import annotations
@@ -35,7 +36,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up switch entities from a config entry."""
-    coordinator: RSLocalApiCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: RSLocalApiCoordinator = hass.data[DOMAIN][
+        entry.entry_id
+    ]
 
     async_add_entities(
         [
@@ -57,7 +60,7 @@ class RSChargeBlockSwitch(
     CoordinatorEntity[RSLocalApiCoordinator],
     SwitchEntity,
 ):
-    """Switch that controls the RS Solar charge block state (bit0)."""
+    """Switch that controls the RS Solar charge block state (bit 0)."""
 
     _attr_has_entity_name = True
 
@@ -71,7 +74,9 @@ class RSChargeBlockSwitch(
         super().__init__(coordinator)
 
         self.entity_description = description
-        self._attr_unique_id = f"{entry.entry_id}_{description.key}"
+        self._attr_unique_id = (
+            f"{entry.entry_id}_{description.key}"
+        )
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
             name=entry.title,
@@ -81,8 +86,8 @@ class RSChargeBlockSwitch(
 
     @property
     def is_on(self) -> bool | None:
-        """Return whether charge block bit0 is enabled."""
-        state = self.coordinator.data.get("state")
+        """Return the desired charge block state."""
+        state = self.coordinator.desired_state
 
         if isinstance(state, int):
             return (state & 1) == 1
@@ -90,17 +95,13 @@ class RSChargeBlockSwitch(
         return None
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Enable charge block by setting bit0."""
-        current = self.coordinator.data.get("state")
-        base = current if isinstance(current, int) else 0
-        await self.coordinator.async_set_state(base | 1)
+        """Enable charge block and persist the desired state."""
+        await self.coordinator.async_set_switch_bit(1, True)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Disable charge block by clearing bit0."""
-        current = self.coordinator.data.get("state")
-        base = current if isinstance(current, int) else 0
-        await self.coordinator.async_set_state(base & ~1)
+        """Disable charge block and persist the desired state."""
+        await self.coordinator.async_set_switch_bit(1, False)
         await self.coordinator.async_request_refresh()
 
 
@@ -108,7 +109,7 @@ class RSChargeLoadSwitch(
     CoordinatorEntity[RSLocalApiCoordinator],
     SwitchEntity,
 ):
-    """Switch that controls the RS Solar charge load state (bit1)."""
+    """Switch that controls the RS Solar charge load state (bit 1)."""
 
     _attr_has_entity_name = True
 
@@ -122,7 +123,9 @@ class RSChargeLoadSwitch(
         super().__init__(coordinator)
 
         self.entity_description = description
-        self._attr_unique_id = f"{entry.entry_id}_{description.key}"
+        self._attr_unique_id = (
+            f"{entry.entry_id}_{description.key}"
+        )
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
             name=entry.title,
@@ -132,8 +135,8 @@ class RSChargeLoadSwitch(
 
     @property
     def is_on(self) -> bool | None:
-        """Return whether charge load bit1 is enabled."""
-        state = self.coordinator.data.get("state")
+        """Return the desired charge load state."""
+        state = self.coordinator.desired_state
 
         if isinstance(state, int):
             return (state & 2) == 2
@@ -141,15 +144,11 @@ class RSChargeLoadSwitch(
         return None
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Enable charge load by setting bit1."""
-        current = self.coordinator.data.get("state")
-        base = current if isinstance(current, int) else 0
-        await self.coordinator.async_set_state(base | 2)
+        """Enable charge load and persist the desired state."""
+        await self.coordinator.async_set_switch_bit(2, True)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Disable charge load by clearing bit1."""
-        current = self.coordinator.data.get("state")
-        base = current if isinstance(current, int) else 0
-        await self.coordinator.async_set_state(base & ~2)
+        """Disable charge load and persist the desired state."""
+        await self.coordinator.async_set_switch_bit(2, False)
         await self.coordinator.async_request_refresh()
